@@ -1,31 +1,24 @@
-#!/bin/false
+[root@nodo01 ~]# chmod 700 /tmp/config_hugepages80.sh
 
-# This file will be sourced in init.sh
-# You can edit below here and make it do something useful
+[root@nodo01 ~]# cat /tmp/config_hugepages80.sh
+#!/bin/bash
 
-    # Calculate number of hugepages to allocate from memory (in MB)
-    HUGEPAGES="$(($MEMORY/$(($(grep Hugepagesize /proc/meminfo | awk '{print $2}')/1024))))" 
+round() {
+# Función para sacar la media de las cpus (de la función mira_cpus) ya que en algunas bash no funciona el típico:
+# echo "(`lscpu |grep ^"CPU(s):" | awk -F: {'print $2'} | tr -d '[:blank:]'`)/2" | bc
+echo $(printf %.$2f $(echo "scale=$2;(((10^$2)*$1)+0.5)/(10^$2)" | bc))
+}
 
-    echo $(date) Allocating hugepages... >> /var/log/libvirthook.log
-    echo $HUGEPAGES > /proc/sys/vm/nr_hugepages
-    ALLOC_PAGES=$(cat /proc/sys/vm/nr_hugepages)
+memlibre=`awk '/Hugepagesize:/{p=$2}/ 0 /{next}/ kB$/{v[sprintf("%9d GB %-s",int($2/1024/1024),$0)]=$0;next}{h[$0]=$2}END{for(k in v) print k;for (k in h) print sprintf("%9d GB %-s",p*h[k]/1024/1024,k)}' /proc/meminfo|sort -nr|grep --color=auto -E "^|.(Huge._[TF]|Mem).*:|" |grep MemFree | awk '{ print $4 }'`
 
-    TRIES=0
-    while (( $ALLOC_PAGES != $HUGEPAGES && $TRIES < 1000 ))
-    do
-        echo 1 > /proc/sys/vm/compact_memory            ## defrag ram
-        echo $HUGEPAGES > /proc/sys/vm/nr_hugepages
-        ALLOC_PAGES=$(cat /proc/sys/vm/nr_hugepages)
-        echo $(date) Succesfully allocated $ALLOC_PAGES / $HUGEPAGES  >> /var/log/libvirthook.log
-        let TRIES+=1
-    done
+pagesize=`awk '/Hugepagesize:/{p=$2}/ 0 /{next}/ kB$/{v[sprintf("%9d GB %-s",int($2/1024/1024),$0)]=$0;next}{h[$0]=$2}END{for(k in v) print k;for (k in h) print sprintf("%9d GB %-s",p*h[k]/1024/1024,k)}' /proc/meminfo|sort -nr|grep --color=auto -E "^|.(Huge._[TF]|Mem).*:|" |grep Hugepagesize | awk '{ print $4 }'`
 
-    if [ "$ALLOC_PAGES" -ne "$HUGEPAGES" ]
-    then
-        echo $(date) Not able to allocate all hugepages. Reverting... >> /var/log/libvirthook.log
-        echo 0 > /proc/sys/vm/nr_hugepages
-        exit 1
-    fi
+hps=`echo $(round ${memlibre}/${pagesize} 0)`
+pags=`echo $(round ${hps}*80/100 0)`
 
+echo "${pags}" > /proc/sys/vm/nr_hugepages
+echo "vm.nr_hugepages = ${pags}" >> /etc/sysctl.conf
 
-    
+sysctl -p >>/dev/null
+
+awk '/Hugepagesize:/{p=$2}/ 0 /{next}/ kB$/{v[sprintf("%9d GB %-s",int($2/1024/1024),$0)]=$0;next}{h[$0]=$2}END{for(k in v) print k;for (k in h) print sprintf("%9d GB %-s",p*h[k]/1024/1024,k)}' /proc/meminfo|sort -nr|grep --color=auto -E "^|.(Huge._[TF]|Mem).*:|"
